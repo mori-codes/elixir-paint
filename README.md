@@ -7,3 +7,16 @@ Silly test for a manual tcp server in elixir that allows multi client updates to
 
 server = Server.accept(3000)
 ```
+
+
+```js
+// Serve the client html files
+deno run --allow-read --allow-net jsr:@std/http/file-server
+```
+
+
+
+
+
+
+

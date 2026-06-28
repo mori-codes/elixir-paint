@@ -1,0 +1,41 @@
+body {
+  background-color: #121232;
+  font-family: Cascadia Code;
+}
+
+h1 {
+  font-size: 20px;
+  color: white;
+}
+
+.content {
+  display: flex;
+}
+
+.room-card {
+  background-color: #e5e5e5;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.room-card canvas {
+  aspect-ratio: 1;
+}
+
+.room-card h3 {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.room-card p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.form {
+  color: white;
+  display: flex;
+  flex-direction: column;
+  max-width: 400px;
+  gap: 8px
+}

@@ -1,8 +1,8 @@
 defmodule Channel do
   use GenServer
 
-  def start(client) do
-    {:ok, channel} = GenServer.start(Channel, {client, nil})
+  def start(client, room_name) do
+    {:ok, channel} = GenServer.start(Channel, {client, nil, room_name})
     channel
   end
 
@@ -20,11 +20,11 @@ defmodule Channel do
   end
 
   @impl GenServer
-  def init({client, _listener}) do
+  def init({client, _listener, room_name}) do
     IO.inspect("#{inspect(self())}: Creating GenServer")
-    MapRooms.join(self(), "room_1")
+    MapRooms.join(self(), room_name)
 
-    {:ok, {client, ChannelListener.start(self(), client)}}
+    {:ok, {client, ChannelListener.start(self(), client, room_name)}}
   end
 
   @impl GenServer

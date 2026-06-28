@@ -2,11 +2,11 @@ defmodule MapRooms do
   use GenServer
 
   def start() do
-    GenServer.start(MapRooms, nil, name: MapRooms)
+    GenServer.start(__MODULE__, nil, name: __MODULE__)
   end
 
   def stop() do
-    GenServer.stop(MapRooms)
+    GenServer.stop(__MODULE__)
   end
 
   @impl GenServer
@@ -16,21 +16,37 @@ defmodule MapRooms do
 
   def join(channel, room) do
     IO.inspect("#{inspect(self())}: Joining map room")
-    GenServer.cast(MapRooms, {:join, channel, room})
+    GenServer.cast(__MODULE__, {:join, channel, room})
     channel
   end
 
   def update_map(room, position, color) do
-    GenServer.cast(MapRooms, {:set, {position, color}, room})
+    GenServer.cast(__MODULE__, {:set, {position, color}, room})
   end
 
   def get_map(room) do
-    GenServer.call(MapRooms, {:get, room})
+    GenServer.call(__MODULE__, {:get, room})
+  end
+
+  def get_rooms() do
+    GenServer.call(__MODULE__, :list)
   end
 
   @impl GenServer
   def handle_call({:get, room}, _from, state) do
     {:reply, Map.get(state, room) |> Map.get(:map), state}
+  end
+
+  @impl GenServer
+  def handle_call(:list, _from, state) do
+    {:reply,
+     Map.to_list(state)
+     |> Enum.reduce(%{}, fn {key, value}, acc ->
+       Map.put(acc, key, %{
+         map: Map.get(value, :map),
+         players: Map.get(value, :players) |> Enum.count()
+       })
+     end), state}
   end
 
   @impl GenServer

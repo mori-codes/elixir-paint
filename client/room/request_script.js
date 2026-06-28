@@ -1,4 +1,5 @@
-const socket = new WebSocket("ws://localhost:3000")
+const roomName = new URLSearchParams(document.location.search).get("room_name")
+const socket = new WebSocket(`ws://localhost:3000/room/${roomName}`)
 
 socket.addEventListener("open", (event) => {
   console.log("socket connection successful")

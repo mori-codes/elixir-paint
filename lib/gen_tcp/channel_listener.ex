@@ -1,8 +1,8 @@
 defmodule ChannelListener do
   use GenServer
 
-  def start(channel, tcp_client) do
-    {:ok, listener} = GenServer.start(ChannelListener, {channel, tcp_client})
+  def start(channel, tcp_client, room_name) do
+    {:ok, listener} = GenServer.start(ChannelListener, {channel, tcp_client, room_name})
     listener
   end
 
@@ -10,8 +10,8 @@ defmodule ChannelListener do
     GenServer.cast(channel, :listen)
   end
 
-  defp listen(parser, {channel, tcp_client}) do
-    color_map = MapRooms.get_map("room_1")
+  defp listen(parser, {channel, tcp_client, room_name}) do
+    color_map = MapRooms.get_map(room_name)
 
     IO.inspect("#{inspect(self())}: Waiting for receive")
 
@@ -24,26 +24,26 @@ defmodule ChannelListener do
         parser =
           case parser.completed do
             true -> parser
-            false -> listen(parser, {channel, tcp_client})
+            false -> listen(parser, {channel, tcp_client, room_name})
           end
 
         case decode_message(parser) do
           :fail ->
-            listen(FrameParser.create(), {channel, tcp_client})
+            listen(FrameParser.create(), {channel, tcp_client, room_name})
 
           :get_colors ->
             Channel.send_response(channel, color_map)
 
           {:set_color, color, position} ->
-            MapRooms.update_map("room_1", position, color)
+            MapRooms.update_map(room_name, position, color)
         end
 
+        start_listen(self())
+
       {:error, :closed} ->
-        # TODO: Create GenServer stop
+        :gen_tcp.close(tcp_client)
         :close
     end
-
-    start_listen(self())
   end
 
   defp decode_message(parser) do
@@ -63,13 +63,13 @@ defmodule ChannelListener do
   end
 
   @impl GenServer
-  def init({channel, tcp_client}) do
-    {:ok, {channel, tcp_client}}
+  def init({channel, tcp_client, room_name}) do
+    {:ok, {channel, tcp_client, room_name}}
   end
 
   @impl GenServer
-  def handle_cast(:listen, {channel, tcp_client}) do
-    listen(FrameParser.create(), {channel, tcp_client})
-    {:noreply, {channel, tcp_client}}
+  def handle_cast(:listen, {channel, tcp_client, room_name}) do
+    listen(FrameParser.create(), {channel, tcp_client, room_name})
+    {:noreply, {channel, tcp_client, room_name}}
   end
 end

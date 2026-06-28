@@ -15,26 +15,30 @@ defmodule Server do
   end
 
   def loop_acceptor(socket) do
+    IO.inspect("loop_accepting")
     {:ok, client} = :gen_tcp.accept(socket)
     serve(client)
     loop_acceptor(socket)
   end
 
   def serve(socket) do
+    IO.inspect(:inet.peername(socket))
     parser = HTTPParser.create()
     mode = socket |> read_line(parser) |> write_line(socket)
 
     case mode do
       :close -> :gen_tcp.close(socket)
-      :keep -> serve_web_socket(socket)
+      {:keep, room_name} -> serve_web_socket(socket, room_name)
     end
   end
 
   def read_line(socket, parser) do
+    IO.puts("reading reading")
     request =
-      case :gen_tcp.recv(socket, 0) do
+      case :gen_tcp.recv(socket, 0, 100) do
         {:ok, data} ->
           parser = HTTPParser.parse_string(parser, data)
+          IO.inspect({data, parser})
 
           case parser.complete do
             true -> parser
@@ -43,31 +47,20 @@ defmodule Server do
 
         {:error, :closed} ->
           parser
+        {:error, :timeout} ->
+          parser
       end
 
     request
   end
 
   def write_line(request, socket) do
-    body = Jason.encode!("Hello world!")
+    IO.inspect(request.request)
+    params = get_path_params(request.request)
+    IO.inspect(params)
 
     case request.headers["Connection"] do
-      nil ->
-        :gen_tcp.send(socket, """
-        HTTP/1.1 200 OK\r
-        Content-Type: application/json\r
-        Content-Length: #{byte_size(body)}\r
-        Access-Control-Allow-Origin: *\r
-        \r
-        #{body}
-
-        """)
-
-        :close
-
       "Upgrade" ->
-        IO.puts("upgrading")
-
         sec_websocket_accept =
           request.headers["Sec-WebSocket-Key"] <> "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -81,12 +74,29 @@ defmodule Server do
         \r
         """)
 
-        :keep
+        {:keep, params}
+
+      _any ->
+        IO.inspect(MapRooms.get_rooms())
+        body = Jason.encode!(MapRooms.get_rooms())
+
+        :gen_tcp.send(socket, """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: #{byte_size(body)}\r
+        Access-Control-Allow-Origin: *\r
+        \r
+        #{body}
+
+        """)
+
+        :close
     end
   end
 
-  def serve_web_socket(socket) do
-    Channel.start(socket) |> Channel.start_listen()
+  def serve_web_socket(socket, room_name) do
+    IO.inspect("creating web socket")
+    Channel.start(socket, room_name) |> Channel.start_listen()
     # frame_parser = FrameParser.create()
     # message = socket |> read_web_socket_binary(frame_parser)
 
@@ -120,4 +130,11 @@ defmodule Server do
   #       :close
   #   end
   # end
+
+  defp get_path_params(params) do
+    case params do
+      nil -> nil
+      request -> String.split(request, " ") |> Enum.at(1) |> String.split("/") |> Enum.at(-1)
+    end
+  end
 end
