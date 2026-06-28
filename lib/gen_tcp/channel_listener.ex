@@ -31,6 +31,9 @@ defmodule ChannelListener do
           :fail ->
             listen(FrameParser.create(), {channel, tcp_client, room_name})
 
+          :close ->
+            close(channel, room_name, tcp_client)
+
           :get_colors ->
             Channel.send_response(channel, color_map)
 
@@ -41,12 +44,22 @@ defmodule ChannelListener do
         start_listen(self())
 
       {:error, :closed} ->
-        :gen_tcp.close(tcp_client)
-        :close
+        close(channel, room_name, tcp_client)
     end
   end
 
+  defp close(channel, room_name, tcp_client) do
+    MapRooms.exit(channel, room_name)
+    :gen_tcp.close(tcp_client)
+    :close
+  end
+
+  defp decode_message(%{die: true}) do
+    :close
+  end
+
   defp decode_message(parser) do
+    IO.inspect("#{inspect(self())}: Coded data #{inspect(parser)}")
     data = Jason.decode!(parser.content)
     IO.inspect("#{inspect(self())}: Decoded data #{inspect(data)}")
 

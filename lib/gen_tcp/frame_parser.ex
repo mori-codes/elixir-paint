@@ -1,11 +1,13 @@
 defmodule FrameParser do
   def create() do
-    %{content: <<>>, completed: false}
+    %{content: <<>>, completed: false, die: false}
   end
 
   def parse_frame(parser, frame) do
-    <<fin::1, _rsv1::1, _rsv2::1, _rsv3::1, _opcode::4, mask::1, initial_payload_len::7,
+    <<fin::1, _rsv1::1, _rsv2::1, _rsv3::1, opcode::4, mask::1, initial_payload_len::7,
       rest::bitstring>> = frame
+
+    parser = Map.put(parser, :die, <<opcode::4>> == <<8::4>>)
 
     {payload_len, rest} =
       case initial_payload_len do

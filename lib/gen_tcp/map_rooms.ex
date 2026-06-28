@@ -20,6 +20,11 @@ defmodule MapRooms do
     channel
   end
 
+  def exit(channel, room) do
+    IO.inspect("Player exiting room")
+    GenServer.cast(__MODULE__, {:exit, channel, room})
+  end
+
   def update_map(room, position, color) do
     GenServer.cast(__MODULE__, {:set, {position, color}, room})
   end
@@ -57,6 +62,17 @@ defmodule MapRooms do
                                                                                  map: map
                                                                                } ->
        %{map: map, players: [channel | players]}
+     end)}
+  end
+
+  @impl GenServer
+  def handle_cast({:exit, channel, room}, state) do
+    {:noreply,
+     Map.update(state, room, %{players: [channel], map: ColorMap.create()}, fn %{
+                                                                                 players: players,
+                                                                                 map: map
+                                                                               } ->
+       %{map: map, players: Enum.filter(players, fn player -> player !== channel end)}
      end)}
   end
 
